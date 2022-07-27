@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+type Result interface {
+	Value() int
+	Description() string
+}
+
 type SimpleResult struct {
 	rolls int
 	sides int
