@@ -47,6 +47,13 @@ func (o operation) Description() string {
 }
 
 func (o operation) Value() int {
+	switch {
+	case o.left == nil:
+		return o.right.Value()
+	case o.right == nil:
+		return o.left.Value()
+	}
+
 	switch o.op {
 	case '+':
 		return o.left.Value() + o.right.Value()
@@ -74,120 +81,144 @@ func prior(ch rune) int {
 	}
 }
 
-func Parser(expression string) (Result, error) {
-	tokens, err := makePostfix(expression, true)
-	if err != nil {
-		return nil, err
-	}
-	tree := stackS[Result]{}
-	for _, token := range tokens {
-		switch {
-		case strings.Contains(token, "d"):
-			dice, err := RollDiceNotation(token)
-			if err != nil {
-				return nil, err
-			}
-			tree.add(dice)
-		case prior(rune(token[0])) > 0:
-			right := tree.pop()
-			var left Result
-			if tree.size() > 0 {
-				left = tree.pop()
-			}
-			tree.add(operation{
-				op:    rune(token[0]),
-				left:  left,
-				right: right,
-			})
-		default:
-			value, err := strconv.Atoi(token)
-			if err != nil {
-				return nil, err
-			}
-			tree.add(simpleValue{value: value})
+func updateTree(tree stackS[Result], token string) (stackS[Result], error) {
+	switch {
+	case strings.Contains(token, "d"):
+		dice, err := RollDiceNotation(token)
+		if err != nil {
+			return tree, err
 		}
+		tree.add(dice)
+	case prior(rune(token[0])) > 0:
+		right := tree.pop()
+		var left Result
+		if tree.size() > 0 {
+			left = tree.pop()
+		}
+		tree.add(operation{
+			op:    rune(token[0]),
+			left:  left,
+			right: right,
+		})
+	default:
+		value, err := strconv.Atoi(token)
+		if err != nil {
+			return tree, err
+		}
+		tree.add(simpleValue{value: value})
 	}
-
-	return tree.pop(), err
+	return tree, nil
 }
 
-func makePostfix(expression string, letter bool) ([]string, error) {
+func Parser(expression string) (Result, error) {
 	top := '$'
-	tokens := make([]string, 0)
-	stack := stackS[rune]{}
-	stack.add(top)
-	cur := ""
+	//tokens := make([]string, 0)
 
+	ops := stackS[rune]{}
+	ops.add(top)
+
+	tree := stackS[Result]{}
+
+	token := ""
+	var err error
 	for _, char := range expression {
 		if unicode.IsSpace(char) {
 			continue
 		}
 		if unicode.IsDigit(char) || unicode.IsLetter(char) {
-			cur += string(char)
-			if strings.Count(cur, "d") > 1 {
+			token += string(char)
+			if strings.Count(token, "d") > 1 {
 				return nil, errors.New("too much 'd'")
 			}
-			if !letter && unicode.IsLetter(char) && char != 'd' {
+			if unicode.IsLetter(char) && char != 'd' {
 				return nil, errors.New("no letters are allowed")
 			}
 		} else if char == '(' {
-			if len(cur) > 0 {
-				tokens = append(tokens, cur)
-				cur = ""
+			if len(token) > 0 {
+				tree, err = updateTree(tree, token)
+				if err != nil {
+					return nil, err
+				}
+				token = ""
 			}
-			stack.add(char)
+			ops.add(char)
 		} else if char == '^' {
-			if len(cur) > 0 {
-				tokens = append(tokens, cur)
-				cur = ""
+			if len(token) > 0 {
+				tree, err = updateTree(tree, token)
+				if err != nil {
+					return nil, err
+				}
+				token = ""
 			}
-			stack.add(char)
+			ops.add(char)
 		} else if char == ')' {
-			for stack.get() != top && stack.get() != '(' {
-				if len(cur) > 0 {
-					tokens = append(tokens, cur)
-					cur = ""
-				}
-				cur = string(stack.pop())
-			}
-			if len(cur) > 0 {
-				tokens = append(tokens, cur)
-				cur = ""
-			}
-			stack.pop()
-		} else {
-			if prior(char) > prior(stack.get()) {
-				if len(cur) > 0 {
-					tokens = append(tokens, cur)
-					cur = ""
-				}
-				stack.add(char)
-			} else {
-				for stack.get() != top && prior(char) <= prior(stack.get()) {
-					if len(cur) > 0 {
-						tokens = append(tokens, cur)
-						cur = ""
+			for ops.get() != top && ops.get() != '(' {
+				if len(token) > 0 {
+					tree, err = updateTree(tree, token)
+					if err != nil {
+						return nil, err
 					}
-					cur = string(stack.pop())
+					token = ""
 				}
-				if len(cur) > 0 {
-					tokens = append(tokens, cur)
-					cur = ""
+				token = string(ops.pop())
+			}
+			if len(token) > 0 {
+				tree, err = updateTree(tree, token)
+				if err != nil {
+					return nil, err
 				}
-				stack.add(char)
+				token = ""
+			}
+			ops.pop()
+		} else {
+			if prior(char) > prior(ops.get()) {
+				if len(token) > 0 {
+					tree, err = updateTree(tree, token)
+					if err != nil {
+						return nil, err
+					}
+					token = ""
+				}
+				ops.add(char)
+			} else {
+				for ops.get() != top && prior(char) <= prior(ops.get()) {
+					if len(token) > 0 {
+						tree, err = updateTree(tree, token)
+						if err != nil {
+							return nil, err
+						}
+						token = ""
+					}
+					token = string(ops.pop())
+				}
+				if len(token) > 0 {
+					tree, err = updateTree(tree, token)
+					if err != nil {
+						return nil, err
+					}
+					token = ""
+				}
+				ops.add(char)
 			}
 		}
 	}
-	for stack.get() != top {
-		if len(cur) > 0 {
-			tokens = append(tokens, cur)
-			cur = ""
+	for ops.get() != top {
+		if len(token) > 0 {
+			tree, err = updateTree(tree, token)
+			if err != nil {
+				return nil, err
+			}
+			token = ""
 		}
-		cur = string(stack.pop())
+		token = string(ops.pop())
 	}
-	if len(cur) > 0 {
-		tokens = append(tokens, cur)
-		cur = ""
+	if len(token) > 0 {
+		tree, err = updateTree(tree, token)
+		if err != nil {
+			return nil, err
+		}
+		token = ""
 	}
-	return tokens, nil
+
+	return tree.pop(), nil
 }
