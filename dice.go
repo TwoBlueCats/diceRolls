@@ -16,17 +16,20 @@ type Result interface {
 type rollResult struct {
 	rolls int
 	sides int
-	sum   int
 }
 
 var _ Result = (*rollResult)(nil)
 
 func (r rollResult) Description() string {
-	return fmt.Sprintf("%d {%dd%d}", r.sum, r.rolls, r.sides)
+	return fmt.Sprintf("%dd%d", r.rolls, r.sides)
 }
 
 func (r rollResult) Value() int {
-	return r.sum
+	sum := 0
+	for i := 0; i < r.rolls; i++ {
+		sum += rand.Intn(r.sides) + 1
+	}
+	return sum
 }
 
 // RollSimpleDice rolls k-side dice n times and return sum of result
@@ -40,10 +43,8 @@ func RollSimpleDice(n, k int) (Result, error) {
 		return nil, errors.New("number of sides must be positive")
 	}
 
-	r := rollResult{rolls: n, sides: k, sum: 0}
-	for i := 0; i < n; i++ {
-		r.sum += rand.Intn(k) + 1
-	}
+	r := rollResult{rolls: n, sides: k}
+
 	return r, nil
 }
 
