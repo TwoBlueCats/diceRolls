@@ -1,4 +1,4 @@
-package dice_rolls
+package diceRolls
 
 import (
 	"testing"

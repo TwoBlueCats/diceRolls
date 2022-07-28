@@ -1,4 +1,4 @@
-package dice_rolls
+package diceRolls
 
 import (
 	"errors"
@@ -13,19 +13,19 @@ type Result interface {
 	Description() string
 }
 
-type SimpleResult struct {
+type rollResult struct {
 	rolls int
 	sides int
 	sum   int
 }
 
-var _ Result = (*SimpleResult)(nil)
+var _ Result = (*rollResult)(nil)
 
-func (r SimpleResult) Description() string {
-	return fmt.Sprintf("%d (%dd%d)", r.sum, r.rolls, r.sides)
+func (r rollResult) Description() string {
+	return fmt.Sprintf("%d {%dd%d}", r.sum, r.rolls, r.sides)
 }
 
-func (r SimpleResult) Value() int {
+func (r rollResult) Value() int {
 	return r.sum
 }
 
@@ -40,7 +40,7 @@ func RollSimpleDice(n, k int) (Result, error) {
 		return nil, errors.New("number of sides must be positive")
 	}
 
-	r := SimpleResult{rolls: n, sides: k, sum: 0}
+	r := rollResult{rolls: n, sides: k, sum: 0}
 	for i := 0; i < n; i++ {
 		r.sum += rand.Intn(k) + 1
 	}
