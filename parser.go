@@ -33,13 +33,45 @@ var _ Result = (*operation)(nil)
 func (o operation) Description() string {
 	switch o.op {
 	case '+':
+		switch {
+		case o.left == nil:
+			return o.right.Description()
+		case o.right == nil:
+			return o.left.Description()
+		}
 		return "(" + o.left.Description() + " + " + o.right.Description() + ")"
 	case '-':
+		switch {
+		case o.left == nil:
+			return "-" + o.right.Description()
+		case o.right == nil:
+			return o.left.Description()
+		}
 		return "(" + o.left.Description() + " - " + o.right.Description() + ")"
 	case '*':
+		switch {
+		case o.left == nil:
+			return o.right.Description()
+		case o.right == nil:
+			return o.left.Description()
+		}
 		return "(" + o.left.Description() + " * " + o.right.Description() + ")"
 	case '/':
+		switch {
+		case o.left == nil:
+			return "0"
+		case o.right == nil:
+			return o.left.Description()
+		}
 		return "(" + o.left.Description() + " / " + o.right.Description() + ")"
+	case '^':
+		switch {
+		case o.left == nil:
+			return "0"
+		case o.right == nil:
+			return o.left.Description()
+		}
+		return "(" + o.left.Description() + " ^ " + o.right.Description() + ")"
 
 	default:
 		panic("unknown operation")
@@ -47,22 +79,52 @@ func (o operation) Description() string {
 }
 
 func (o operation) Value() int {
-	switch {
-	case o.left == nil:
-		return o.right.Value()
-	case o.right == nil:
-		return o.left.Value()
-	}
-
 	switch o.op {
 	case '+':
+		switch {
+		case o.left == nil:
+			return o.right.Value()
+		case o.right == nil:
+			return o.left.Value()
+		}
 		return o.left.Value() + o.right.Value()
 	case '-':
+		switch {
+		case o.left == nil:
+			return -o.right.Value()
+		case o.right == nil:
+			return o.left.Value()
+		}
 		return o.left.Value() - o.right.Value()
 	case '*':
+		switch {
+		case o.left == nil:
+			return o.right.Value()
+		case o.right == nil:
+			return o.left.Value()
+		}
 		return o.left.Value() * o.right.Value()
 	case '/':
+		switch {
+		case o.left == nil:
+			return 0
+		case o.right == nil:
+			return o.left.Value()
+		}
 		return o.left.Value() / o.right.Value()
+	case '^':
+		switch {
+		case o.left == nil:
+			return 0
+		case o.right == nil:
+			return o.left.Value()
+		}
+		sum := 0
+		right := o.right.Value()
+		for i := 0; i < right; i++ {
+			sum += o.left.Value()
+		}
+		return sum
 
 	default:
 		panic("unknown operation")
@@ -81,7 +143,15 @@ func prior(ch rune) int {
 	}
 }
 
-func updateTree(tree stackS[Result], token string) (stackS[Result], error) {
+func updateTree(tree stackS[Result], tokenPtr *string) (stackS[Result], error) {
+	if tokenPtr == nil {
+		return tree, nil
+	}
+	token := *tokenPtr
+	*tokenPtr = ""
+	if len(token) == 0 {
+		return tree, nil
+	}
 	switch {
 	case strings.Contains(token, "d"):
 		dice, err := RollDiceNotation(token)
@@ -112,7 +182,6 @@ func updateTree(tree stackS[Result], token string) (stackS[Result], error) {
 
 func Parser(expression string) (Result, error) {
 	top := '$'
-	//tokens := make([]string, 0)
 
 	ops := stackS[rune]{}
 	ops.add(top)
@@ -134,90 +203,60 @@ func Parser(expression string) (Result, error) {
 				return nil, errors.New("no letters are allowed")
 			}
 		} else if char == '(' {
-			if len(token) > 0 {
-				tree, err = updateTree(tree, token)
-				if err != nil {
-					return nil, err
-				}
-				token = ""
-			}
-			ops.add(char)
-		} else if char == '^' {
-			if len(token) > 0 {
-				tree, err = updateTree(tree, token)
-				if err != nil {
-					return nil, err
-				}
-				token = ""
-			}
+			_ = len(token) == 0
 			ops.add(char)
 		} else if char == ')' {
 			for ops.get() != top && ops.get() != '(' {
-				if len(token) > 0 {
-					tree, err = updateTree(tree, token)
-					if err != nil {
-						return nil, err
-					}
-					token = ""
-				}
-				token = string(ops.pop())
-			}
-			if len(token) > 0 {
-				tree, err = updateTree(tree, token)
+				tree, err = updateTree(tree, &token)
 				if err != nil {
 					return nil, err
 				}
-				token = ""
+				token = string(ops.pop())
+			}
+			tree, err = updateTree(tree, &token)
+			if err != nil {
+				return nil, err
 			}
 			ops.pop()
 		} else {
 			if prior(char) > prior(ops.get()) {
-				if len(token) > 0 {
-					tree, err = updateTree(tree, token)
-					if err != nil {
-						return nil, err
-					}
-					token = ""
+				tree, err = updateTree(tree, &token)
+				if err != nil {
+					return nil, err
 				}
 				ops.add(char)
 			} else {
 				for ops.get() != top && prior(char) <= prior(ops.get()) {
-					if len(token) > 0 {
-						tree, err = updateTree(tree, token)
-						if err != nil {
-							return nil, err
-						}
-						token = ""
-					}
-					token = string(ops.pop())
-				}
-				if len(token) > 0 {
-					tree, err = updateTree(tree, token)
+					tree, err = updateTree(tree, &token)
 					if err != nil {
 						return nil, err
 					}
-					token = ""
+					token = string(ops.pop())
+				}
+				tree, err = updateTree(tree, &token)
+				if err != nil {
+					return nil, err
 				}
 				ops.add(char)
 			}
 		}
 	}
 	for ops.get() != top {
-		if len(token) > 0 {
-			tree, err = updateTree(tree, token)
-			if err != nil {
-				return nil, err
-			}
-			token = ""
-		}
-		token = string(ops.pop())
-	}
-	if len(token) > 0 {
-		tree, err = updateTree(tree, token)
+		tree, err = updateTree(tree, &token)
 		if err != nil {
 			return nil, err
 		}
-		token = ""
+		token = string(ops.pop())
+	}
+	tree, err = updateTree(tree, &token)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = ops.size() == 1
+
+	if tree.size() != 1 {
+		return nil, errors.New("some operands left")
 	}
 
 	return tree.pop(), nil

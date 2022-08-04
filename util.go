@@ -4,7 +4,7 @@ type stackS[T any] struct {
 	data []T
 }
 
-func (s stackS[T]) get() T {
+func (s *stackS[T]) get() T {
 	if s.size() == 0 {
 		var def T
 		return def
@@ -24,6 +24,6 @@ func (s *stackS[T]) add(val T) T {
 	s.data = append(s.data, val)
 	return val
 }
-func (s stackS[T]) size() int {
+func (s *stackS[T]) size() int {
 	return len(s.data)
 }
