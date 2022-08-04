@@ -33,8 +33,8 @@ func (r *rollResult) Value() int {
 	sum := 0
 	r.details = r.details[:0]
 	for i := 0; i < r.rolls; i++ {
-		val := rand.Intn(r.sides)
-		sum += val + 1
+		val := rand.Intn(r.sides) + 1
+		sum += val
 		r.details = append(r.details, val)
 	}
 	return sum
