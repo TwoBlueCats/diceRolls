@@ -14,7 +14,7 @@ type simpleValue struct {
 
 var _ Result = (*simpleValue)(nil)
 
-func (r simpleValue) Description() string {
+func (r simpleValue) Description(bool) string {
 	return fmt.Sprintf("%d", r.value)
 }
 
@@ -30,48 +30,48 @@ type operation struct {
 
 var _ Result = (*operation)(nil)
 
-func (o operation) Description() string {
+func (o operation) Description(detailed bool) string {
 	switch o.op {
 	case '+':
 		switch {
 		case o.left == nil:
-			return o.right.Description()
+			return o.right.Description(detailed)
 		case o.right == nil:
-			return o.left.Description()
+			return o.left.Description(detailed)
 		}
-		return "(" + o.left.Description() + " + " + o.right.Description() + ")"
+		return "(" + o.left.Description(detailed) + " + " + o.right.Description(detailed) + ")"
 	case '-':
 		switch {
 		case o.left == nil:
-			return "-" + o.right.Description()
+			return "-" + o.right.Description(detailed)
 		case o.right == nil:
-			return o.left.Description()
+			return o.left.Description(detailed)
 		}
-		return "(" + o.left.Description() + " - " + o.right.Description() + ")"
+		return "(" + o.left.Description(detailed) + " - " + o.right.Description(detailed) + ")"
 	case '*':
 		switch {
 		case o.left == nil:
-			return o.right.Description()
+			return o.right.Description(detailed)
 		case o.right == nil:
-			return o.left.Description()
+			return o.left.Description(detailed)
 		}
-		return "(" + o.left.Description() + " * " + o.right.Description() + ")"
+		return "(" + o.left.Description(detailed) + " * " + o.right.Description(detailed) + ")"
 	case '/':
 		switch {
 		case o.left == nil:
 			return "0"
 		case o.right == nil:
-			return o.left.Description()
+			return o.left.Description(detailed)
 		}
-		return "(" + o.left.Description() + " / " + o.right.Description() + ")"
+		return "(" + o.left.Description(detailed) + " / " + o.right.Description(detailed) + ")"
 	case '^':
 		switch {
 		case o.left == nil:
 			return "0"
 		case o.right == nil:
-			return o.left.Description()
+			return o.left.Description(detailed)
 		}
-		return "(" + o.left.Description() + " ^ " + o.right.Description() + ")"
+		return "(" + o.left.Description(detailed) + " ^ " + o.right.Description(detailed) + ")"
 
 	default:
 		panic("unknown operation")

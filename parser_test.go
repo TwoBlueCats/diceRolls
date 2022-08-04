@@ -40,11 +40,14 @@ func TestParserCalc(t *testing.T) {
 		rand.Seed(395)
 		result, err := Parser("24*(2*2-3)/2^2 + 1d10")
 		require.NoError(t, err)
-		assert.Equal(t, "(((24 * ((2 * 2) - 3)) / (2 ^ 2)) + 1d10)", result.Description())
+		assert.Equal(t, "(((24 * ((2 * 2) - 3)) / (2 ^ 2)) + 1d10)", result.Description(false))
+		assert.Equal(t, "(((24 * ((2 * 2) - 3)) / (2 ^ 2)) + 1d10 [])", result.Description(true))
+		assert.Equal(t, 11, result.Value())
+		assert.Equal(t, "(((24 * ((2 * 2) - 3)) / (2 ^ 2)) + 1d10 [4])", result.Description(true))
 
 		result, err = Parser("-2")
 		require.NoError(t, err)
-		assert.Equal(t, "-2", result.Description())
+		assert.Equal(t, "-2", result.Description(false))
 	})
 
 	t.Run("dice-roll", func(t *testing.T) {

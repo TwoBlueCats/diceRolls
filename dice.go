@@ -10,24 +10,32 @@ import (
 
 type Result interface {
 	Value() int
-	Description() string
+	Description(bool) string
 }
 
 type rollResult struct {
 	rolls int
 	sides int
+
+	details []int
 }
 
 var _ Result = (*rollResult)(nil)
 
-func (r rollResult) Description() string {
+func (r *rollResult) Description(detailed bool) string {
+	if detailed {
+		return fmt.Sprintf("%dd%d %v", r.rolls, r.sides, r.details)
+	}
 	return fmt.Sprintf("%dd%d", r.rolls, r.sides)
 }
 
-func (r rollResult) Value() int {
+func (r *rollResult) Value() int {
 	sum := 0
+	r.details = r.details[:0]
 	for i := 0; i < r.rolls; i++ {
-		sum += rand.Intn(r.sides) + 1
+		val := rand.Intn(r.sides)
+		sum += val + 1
+		r.details = append(r.details, val)
 	}
 	return sum
 }
@@ -45,7 +53,7 @@ func RollSimpleDice(n, k int) (Result, error) {
 
 	r := rollResult{rolls: n, sides: k}
 
-	return r, nil
+	return &r, nil
 }
 
 func RollDiceNotation(notation string) (Result, error) {
